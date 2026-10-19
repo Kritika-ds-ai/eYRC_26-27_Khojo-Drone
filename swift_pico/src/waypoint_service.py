@@ -11,6 +11,13 @@ class WayPoints(Node):
         super().__init__('waypoints_service')
         #create a service for the service type 'GetWaypoints' with the name 'waypoints' and self.waypoint_callback as the callback.
         #Refer to Writing a simple service and client (Python) in ROS 2 tutorials
+                
+        self.srv = self.create_service(
+            GetWaypoints,
+            'waypoints',
+            self.waypoint_callback
+        )
+
         self.waypoints = []
 
     
