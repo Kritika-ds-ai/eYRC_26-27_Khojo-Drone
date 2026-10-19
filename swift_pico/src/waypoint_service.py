@@ -18,7 +18,14 @@ class WayPoints(Node):
             self.waypoint_callback
         )
 
-        self.waypoints = []
+        self.waypoints = [
+            [-2.41, -2.41, 13.00],  # wp1
+            [2.41, 1.20, 13.00],    # wp2
+            [1.20, -2.41, 13.00],   # wp3
+            [-1.20, 1.20, 13.00]    # wp4
+        
+]
+
 
     
     def waypoint_callback(self, request, response):
