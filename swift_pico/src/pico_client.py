@@ -6,6 +6,9 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 
 #import the action and service
+from waypoint_navigation.action import NavToWaypoint
+from waypoint_navigation.srv import GetWaypoints
+
 
 
 
@@ -17,44 +20,76 @@ class WayPointClient(Node):
         self.goal_index = 0
         #create an action client for the action 'NavToWaypoint'. Refer to Writing an action server and client (Python) in ROS 2 tutorials
         #action name should 'waypoint_navigation'.
+        self._action_client = ActionClient(
+        self,
+        NavToWaypoint,
+       'waypoint_navigation'
+        )
+
 
         
         #create a client for the service 'GetWaypoints'. Refer to Writing a simple service and client (Python) in ROS 2 tutorials
         #service name should be 'waypoints'
-        
+        self.cli = self.create_client(
+        GetWaypoints,
+        'waypoints'
+        )
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
 
         #create a request object for GetWaypoints service.
-        
+        self.req = GetWaypoints.Request()
+        self.req.get_waypoints = True
+
+
 
     
     ###action client functions
 
     def send_goal(self, waypoint):
 
-        #create a NavToWaypoint goal object.
+        #create a NavToWaypoint goal object.       
+        goal_msg = NavToWaypoint.Goal()
 
         goal_msg.waypoint.position.x = waypoint[0]
         goal_msg.waypoint.position.y = waypoint[1]
         goal_msg.waypoint.position.z = waypoint[2]
 
         #create a method waits for the action server to be available.
+        self._action_client.wait_for_server()
+        self._send_goal_future = self._action_client.send_goal_async(
+        goal_msg,
+        feedback_callback=self.feedback_callback
+        )
+        self._send_goal_future.add_done_callback(
+        self.goal_response_callback
+        )   
+
         
-
-        self.send_goal_future = self.action_client.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)    
-        self.send_goal_future.add_done_callback(self.goal_response_callback)
-
     def goal_response_callback(self, future):
 
         #complete the goal_response_callback. Refer to Writing an action server and client (Python) in ROS 2 tutorials
+        goal_handle = future.result()
+
+        if not goal_handle.accepted:
+        self.get_logger().info('Goal rejected')
+        return
+
+        self.get_logger().info('Goal accepted')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(
+        self.get_result_callback
+        )
+ 
 
         
 
     def get_result_callback(self, future):
 
         #complete the missing line
-        result = 
+        result = future.result().result
+
         self.get_logger().info('Result: {0}'.format(result.hov_time))
 
         self.goal_index += 1
@@ -67,7 +102,8 @@ class WayPointClient(Node):
     def feedback_callback(self, feedback_msg):
 
         #complete the missing line
-        feedback = 
+        feedback = feedback_msg.feedback
+
         x = feedback.current_waypoint.pose.position.x
         y = feedback.current_waypoint.pose.position.y
         z = feedback.current_waypoint.pose.position.z
@@ -80,11 +116,12 @@ class WayPointClient(Node):
 
     def send_request(self):
         #  complete send_request method, which will send the request and return a future
-    
+        return self.cli.call_async(self.req) 
+        
     def receive_goals(self):
         future = self.send_request()
         #write a statement to execute the service until the future is complete
-        
+        rclpy.spin_until_future_complete(self, future)
         response = future.result()
         self.get_logger().info('Waypoints received by the action client')
 
